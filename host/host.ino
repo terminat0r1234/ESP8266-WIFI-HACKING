@@ -16,8 +16,51 @@ char data_websiteBuffer[bufSize];
 ESP8266WebServer server(80);
 SerialCommand sCmd;
 
-const char* essid = "abcdabcd";
+const char* essid = "pwn123";
 const char* password = "khongbietdau";
+
+//----KHAI BAO PROTOTYPE----------//
+void startWifi();
+void requestStartScanAP();
+void responseStartScanAP();
+void requestSendScanAPResults();
+void sendScanAPResults();
+void requestSelectAP();
+void responeSelectAP();
+
+void requestStartScanStation();
+void responseStartScanStation();
+void requestSendScanStationResults();
+void responseSendScanStationResults();
+void sendScanStationResults();
+void requestSelectStation();
+void responseSelectStation();
+void requestBeaconAttack();
+void responseBeaconAttack();
+void requestDeDisAttack();
+void responseDeDisAttack();
+void requestStartMonitorEnv();
+void responseStartMonitorEnv1();
+void responseStartMonitorEnv2();
+void sendMonitorResults();
+void checkStatus();
+
+void loadIndexHTML();
+void loadScanApHTML();
+void loadMonitorHTML();
+void loadBeaconHTML();
+void loadScriptJS();
+void loadScanJS();
+void loadMonitorJS();
+void loadBeaconJS();
+void loadStyleCSS();
+
+String charToString(const char* s);
+void sendBuffer();
+void sendToBuffer(String str);
+void sendHeader(int code, String type, size_t _size);
+void sendFile(int code, String type, const char* adr, size_t len);
+
 
 //---- KHỞI TẠO ACCESS POINT ----//
 void startWifi() {
@@ -43,6 +86,7 @@ void responseStartScanAP() {
 //---------------------------------
 void requestSendScanAPResults() {
   _status = 1;
+  json = "";
   Serial.println("RQ_S_AP_R");
   server.send(200, "text/json", "true");
 }
@@ -70,14 +114,13 @@ void sendScanAPResults() {
   sendToBuffer(json);
   sendHeader(200, "text/json", _size);
   sendBuffer();
-  json = "";
 }
 
 //---------------------------------
 void requestSelectAP() {
   if (server.hasArg("id")) {
     _status = 1;
-    String cmd = "RQ_SL_AP ";
+    String cmd = "RQ_SL_AP/";
     cmd += server.arg("id").toInt();
     Serial.println(cmd);
     server.send(200, "text/json", "true");
@@ -96,7 +139,7 @@ void responeSelectAP() {
 void requestStartScanStation() {
   if (server.hasArg("time")) {
     _status = 1;
-    String cmd = "RQ_S_S_S ";
+    String cmd = "RQ_S_S_S/";
     cmd += server.arg("time").toInt();
     Serial.println(cmd);
     server.send(200, "text/json", "true");
@@ -112,6 +155,7 @@ void responseStartScanStation() {
 //---------------------------------
 void requestSendScanStationResults() {
   _status = 1;
+  json = "";
   Serial.println("RQ_S_ST_R");
   server.send(200, "text/json", "true");
 }
@@ -139,13 +183,12 @@ void sendScanStationResults() {
   sendToBuffer(json);
   sendHeader(200, "text/json", _size);
   sendBuffer();
-  json = "";
 }
 //---------------------------------
 void requestSelectStation() {
   if (server.hasArg("id")) {
     _status = 1;          // running
-    String cmd = "RQ_SL_ST ";
+    String cmd = "RQ_SL_ST/";
     cmd += server.arg("id").toInt();
     Serial.println(cmd);
     server.send(200, "text/json", "true");
@@ -161,16 +204,39 @@ void responseSelectStation() {
 //---- 3. TẤN CÔNG BEACON FLOOD ----//
 
 void requestBeaconAttack() {
-  if (server.hasArg("ssid") && server.hasArg("time")) {
+  if (server.hasArg("random") && server.hasArg("time") && server.hasArg("ssid")) {
+    int rd = server.arg("random").toInt();
     _status = 1;
-    String cmd = "RQ_BC_AT ";
-    cmd += server.arg("ssid");
-    cmd += " ";
-    cmd += server.arg("time").toInt();
-    Serial.println(cmd);
-    server.send(200, "text/json", "true");
+    if (rd == 1) {
+      String cmd = "RQ_BC_AT/";
+      cmd += rd;
+      cmd += "/";
+      cmd += server.arg("time").toInt();
+      Serial.println(cmd);
+      server.send(200, "text/json", "true");
+    }
+    else {
+      String cmd = "RQ_BC_AT/";
+      cmd += rd;
+      cmd += "/";
+      cmd += server.arg("time").toInt();
+      cmd += "/";
+      cmd += server.arg("ssid");
+      Serial.println(cmd);
+      server.send(200, "text/json", "true");
+    }
   }
+  //  if (server.hasArg("ssid") && server.hasArg("time")) {
+  //    _status = 1;
+  //    String cmd = "RQ_BC_AT ";
+  //    cmd += server.arg("ssid");
+  //    cmd += " ";
+  //    cmd += server.arg("time").toInt();
+  //    Serial.println(cmd);
+  //    server.send(200, "text/json", "true");
+  //  }
 }
+
 void responseBeaconAttack() {
   digitalWrite(BUILTIN_LED, LOW);
   _status = 0;
@@ -184,17 +250,17 @@ void requestDeDisAttack() {
     _status = 1;
     int type = server.arg("type").toInt();
     if (type == 0) { //deauthentication
-      String cmd = "RQ_DE_AT ";
+      String cmd = "RQ_DE_AT/";
       cmd += server.arg("time").toInt();
-      cmd += " ";
+      cmd += "/";
       cmd += server.arg("all").toInt();
       Serial.println(cmd);
       server.send(200, "text/json", "true");
     }
     else {
-      String cmd = "RQ_DIS_AT ";
+      String cmd = "RQ_DIS_AT/";
       cmd += server.arg("time").toInt();
-      cmd += " ";
+      cmd += "/";
       cmd += server.arg("all").toInt();
       Serial.println(cmd);
       server.send(200, "text/json", "true");
@@ -212,9 +278,9 @@ void responseDeDisAttack() {
 void requestStartMonitorEnv() {
   if (server.hasArg("time") && server.hasArg("channel")) {
     _status = 1;
-    String cmd = "RQ_MON ";
+    String cmd = "RQ_MON/";
     cmd += server.arg("time").toInt();
-    cmd += " ";
+    cmd += "/";
     cmd += server.arg("channel").toInt();
     Serial.println(cmd);
     server.send(200, "text/json", "true");
@@ -252,12 +318,38 @@ void checkStatus() {
   }
 }
 
+//------LOAD HTML, CSS, JAVASCRIPT -------//
 void loadIndexHTML() {
   sendFile(200, "text/html", data_indexHTML, sizeof(data_indexHTML));
 }
-void loadFunctionJS() {
-  sendFile(200, "text/javascript", data_functionJS, sizeof(data_functionJS));
+void loadScanApHTML() {
+  sendFile(200, "text/html", data_scanApHTML, sizeof(data_scanApHTML));
 }
+void loadMonitorHTML() {
+  sendFile(200, "text/html", data_monitorHTML, sizeof(data_monitorHTML));
+}
+void loadBeaconHTML() {
+  sendFile(200, "text/html", data_beaconHTML, sizeof(data_beaconHTML));
+}
+
+void loadScriptJS() {
+  sendFile(200, "text/javascript", data_scriptJS, sizeof(data_scriptJS));
+}
+void loadScanJS() {
+  sendFile(200, "text/javascript", data_scanJS, sizeof(data_scanJS));
+}
+void loadMonitorJS() {
+  sendFile(200, "text/javascript", data_monitorJS, sizeof(data_monitorJS));
+}
+void loadBeaconJS() {
+  sendFile(200, "text/javascript", data_beaconJS, sizeof(data_beaconJS));
+}
+
+void loadStyleCSS() {
+  sendFile(200, "text/css;charset=UTF-8", data_styleCSS, sizeof(data_styleCSS));
+}
+
+
 String charToString(const char* s) {
   String str = "";
   int i = 0;
@@ -328,12 +420,22 @@ void setup() {
   server.on("/checkStatus.json", checkStatus);
 
   server.on("/", loadIndexHTML);
-  server.on("/function.js", loadFunctionJS);
+  server.on("/index.html", loadIndexHTML);
+  server.on("/scan.html", loadScanApHTML);
+  server.on("/monitor.html", loadMonitorHTML);
+  server.on("/beacon.html", loadBeaconHTML);
+
+  server.on("/js/script.js", loadScriptJS);
+  server.on("/js/scan.js", loadScanJS);
+  server.on("/js/monitor.js", loadMonitorJS);
+  server.on("/js/beacon.js", loadBeaconJS);
+
+  server.on("/css/style.css", loadStyleCSS);
   server.begin();
 }
 void loop() {
   server.handleClient();
   sCmd.readSerial();
 }
-//test-changes  22222
-  
+
+
